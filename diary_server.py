@@ -29,6 +29,7 @@ CHARSETS = {
     'latin1': ('latin-1', '\n'),        # AmigaOS
     'macroman': ('mac_roman', '\r'),    # classic Mac OS
     'nextstep': ('nextstep', '\n'),     # NeXTSTEP
+    'windows-1252': ('cp1252', '\r\n'), # Windows 95/98
 }
 LINE_ENDS = {'lf': '\n', 'cr': '\r', 'crlf': '\r\n'}
 
@@ -194,7 +195,7 @@ class Handler(BaseHTTPRequestHandler):
         query = parse_qs(url.query, keep_blank_values=True)
         charset = query.get('charset', ['utf-8'])[0].lower()
         if charset not in CHARSETS:
-            self.fail(400, 'Unknown charset; use utf-8, latin1, macroman or nextstep.')
+            self.fail(400, 'Unknown charset; use utf-8, latin1, macroman, nextstep or windows-1252.')
             return None
         codec, eol = CHARSETS[charset]
         if 'eol' in query:

@@ -16,6 +16,7 @@ sends and receives (and its search words) are then in that character set:
 | `latin1` | AmigaOS | LF |
 | `macroman` | classic Mac OS | CR |
 | `nextstep` | NeXTSTEP | LF |
+| `windows-1252` | Windows 95/98 | CR LF |
 
 `eol=lf`, `eol=cr` or `eol=crlf` overrides the line end. Characters the
 client's character set lacks are sent as plain look-alikes (`"` for curly

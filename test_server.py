@@ -72,6 +72,17 @@ class Basics(ServerTest):
         _, _, days = self.request('GET', '/search?q=GR%F6%FBE&charset=nextstep')
         self.assertEqual(days, b'2026-10-26\n')
 
+    def test_windows(self):
+        # Windows-1252: ü=FC ß=DF, curly quotes 93/94, en dash 96, CR LF
+        win_text = b'Gr\xfc\xdfe von Windows\r\n\x93Quotes\x94 \x96 ok \x80'
+        self.request('PUT', '/entries/2026-10-25?charset=windows-1252', win_text)
+        stored = pathlib.Path(self.tmp.name, '2026-10-25').read_bytes()
+        self.assertEqual(stored, 'Grüße von Windows\n“Quotes” – ok €\n'.encode('utf-8'))
+        _, _, back = self.request('GET', '/entries/2026-10-25?charset=windows-1252')
+        self.assertEqual(back, win_text)
+        _, _, amiga = self.request('GET', '/entries/2026-10-25?charset=latin1')
+        self.assertEqual(amiga, b'Gr\xfc\xdfe von Windows\n"Quotes" - ok EUR')
+
     def test_list_newest_first_with_versions(self):
         for day in ('2026-10-01', '2026-10-28', '2025-12-31'):
             self.request('PUT', '/entries/' + day, b'x')
