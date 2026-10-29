@@ -10,7 +10,7 @@ It's a single Python file with no dependencies beyond the standard library.
 It speaks plain HTTP/1.0 (see [PROTOCOL.md](PROTOCOL.md)), stores entries as
 UTF-8 text files, and gives every machine its entries in its own character
 set: MacRoman for the classic Mac, ISO Latin-1 for the Amiga, UTF-8 for
-Mac OS X. Search runs on the
+Mac OS X, and NeXTSTEP's own character set. Search runs on the
 server, so it's quick even on a 68000. Saving an entry that was changed on
 another machine in the meantime is refused instead of overwriting it.
 

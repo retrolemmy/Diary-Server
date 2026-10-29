@@ -59,6 +59,19 @@ class Basics(ServerTest):
         _, _, mac = self.request('GET', '/entries/2026-10-27?charset=macroman')
         self.assertEqual(mac, 'Gr\x9f\xa7e vom Amiga: \x8a \x9a \x9f\rZweite Zeile'.encode('latin-1'))
 
+    def test_nextstep(self):
+        # NeXTSTEP's character set: ü=F6 ß=FB, curly quotes AA/BA, en dash B1
+        next_text = b'Gr\xf6\xfbe von NeXT\n\xaaQuotes\xba \xb1 ok'
+        self.request('PUT', '/entries/2026-10-26?charset=nextstep', next_text)
+        stored = pathlib.Path(self.tmp.name, '2026-10-26').read_bytes()
+        self.assertEqual(stored, 'Grüße von NeXT\n“Quotes” – ok\n'.encode('utf-8'))
+        _, _, back = self.request('GET', '/entries/2026-10-26?charset=nextstep')
+        self.assertEqual(back, next_text)
+        _, _, mac = self.request('GET', '/entries/2026-10-26?charset=macroman')
+        self.assertEqual(mac, b'Gr\x9f\xa7e von NeXT\r\xd2Quotes\xd3 \xd0 ok')
+        _, _, days = self.request('GET', '/search?q=GR%F6%FBE&charset=nextstep')
+        self.assertEqual(days, b'2026-10-26\n')
+
     def test_list_newest_first_with_versions(self):
         for day in ('2026-10-01', '2026-10-28', '2025-12-31'):
             self.request('PUT', '/entries/' + day, b'x')

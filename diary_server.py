@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Diary Server: keeps the Diary entries of all your retro machines in one place.
 
-A tiny HTTP/1.0 server for the Diary apps (classic Mac OS, AmigaOS 3.2, ...).
+A tiny HTTP/1.0 server for the Diary apps (classic Mac OS, AmigaOS 3.2,
+Mac OS X, NeXTSTEP, ...).
 Entries are stored as UTF-8 text files named YYYY-MM-DD with LF line ends;
 every client gets and sends them in its own character set and line ends.
 See PROTOCOL.md for the requests. Only the Python standard library is used.
@@ -9,6 +10,7 @@ See PROTOCOL.md for the requests. Only the Python standard library is used.
     python3 diary_server.py --dir ~/diary-entries [--port 8642] [--key SECRET]
 """
 import argparse
+import codecs
 import os
 import re
 import tempfile
@@ -26,8 +28,37 @@ CHARSETS = {
     'utf-8': ('utf-8', '\n'),
     'latin1': ('latin-1', '\n'),        # AmigaOS
     'macroman': ('mac_roman', '\r'),    # classic Mac OS
+    'nextstep': ('nextstep', '\n'),     # NeXTSTEP
 }
 LINE_ENDS = {'lf': '\n', 'cr': '\r', 'crlf': '\r\n'}
+
+# NeXTSTEP's own character set, which Python doesn't know: bytes 0x80..0xFF
+# as in Unicode's NEXTSTEP.TXT (0x00..0x7F are ASCII; 0xFE and 0xFF are
+# unused). https://www.unicode.org/Public/MAPPINGS/VENDORS/NEXT/NEXTSTEP.TXT
+_NEXTSTEP_HIGH = (
+    '\u00a0\u00c0\u00c1\u00c2\u00c3\u00c4\u00c5\u00c7\u00c8\u00c9\u00ca\u00cb\u00cc\u00cd\u00ce\u00cf'  # 80
+    '\u00d0\u00d1\u00d2\u00d3\u00d4\u00d5\u00d6\u00d9\u00da\u00db\u00dc\u00dd\u00de\u00b5\u00d7\u00f7'  # 90
+    '\u00a9\u00a1\u00a2\u00a3\u2044\u00a5\u0192\u00a7\u00a4\u2019\u201c\u00ab\u2039\u203a\ufb01\ufb02'  # A0
+    '\u00ae\u2013\u2020\u2021\u00b7\u00a6\u00b6\u2022\u201a\u201e\u201d\u00bb\u2026\u2030\u00ac\u00bf'  # B0
+    '\u00b9\u02cb\u00b4\u02c6\u02dc\u00af\u02d8\u02d9\u00a8\u00b2\u02da\u00b8\u00b3\u02dd\u02db\u02c7'  # C0
+    '\u2014\u00b1\u00bc\u00bd\u00be\u00e0\u00e1\u00e2\u00e3\u00e4\u00e5\u00e7\u00e8\u00e9\u00ea\u00eb'  # D0
+    '\u00ec\u00c6\u00ed\u00aa\u00ee\u00ef\u00f0\u00f1\u0141\u00d8\u0152\u00ba\u00f2\u00f3\u00f4\u00f5'  # E0
+    '\u00f6\u00e6\u00f9\u00fa\u00fb\u0131\u00fc\u00fd\u0142\u00f8\u0153\u00df\u00fe\u00ff\ufffd\ufffd'  # F0
+)
+_NEXTSTEP_DECODE = ''.join(map(chr, range(0x80))) + _NEXTSTEP_HIGH
+_NEXTSTEP_ENCODE = codecs.charmap_build(_NEXTSTEP_DECODE[:0xFE] + '\ufffe\ufffe')
+
+
+def _find_codec(name):
+    if name != 'nextstep':
+        return None
+    return codecs.CodecInfo(
+        name='nextstep',
+        encode=lambda text, errors='strict': codecs.charmap_encode(text, errors, _NEXTSTEP_ENCODE),
+        decode=lambda data, errors='strict': codecs.charmap_decode(data, errors, _NEXTSTEP_DECODE))
+
+
+codecs.register(_find_codec)
 
 # Plain look-alikes for characters a client's character set lacks.
 LOOK_ALIKES = {
@@ -163,7 +194,7 @@ class Handler(BaseHTTPRequestHandler):
         query = parse_qs(url.query, keep_blank_values=True)
         charset = query.get('charset', ['utf-8'])[0].lower()
         if charset not in CHARSETS:
-            self.fail(400, 'Unknown charset; use utf-8, latin1 or macroman.')
+            self.fail(400, 'Unknown charset; use utf-8, latin1, macroman or nextstep.')
             return None
         codec, eol = CHARSETS[charset]
         if 'eol' in query:
@@ -213,7 +244,7 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(200, lines.encode('ascii'))
         elif parts == ['search']:
             raw = [p[2:] for p in query.split('&') if p.startswith('q=')]
-            needle = unquote_to_bytes(raw[0].replace('+', ' ')).decode(codec) if raw else ''
+            needle = unquote_to_bytes(raw[0].replace('+', ' ')).decode(codec, errors='replace') if raw else ''
             if not needle:
                 self.fail(400, 'Missing q.')
                 return
@@ -251,7 +282,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.reply(409, b'The entry was changed elsewhere.\n',
                            {'X-Diary-Version': current_version})
                 return
-            version = self.store.write(day, data.decode(codec))
+            version = self.store.write(day, data.decode(codec, errors='replace'))
         self.reply(200, ((version or 'none') + '\n').encode('ascii'),
                    {'X-Diary-Version': version or 'none'})
 
