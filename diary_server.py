@@ -20,7 +20,7 @@ import zlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote_to_bytes, urlsplit
 
-VERSION = '1.0'
+VERSION = '1.0.1'
 MAX_ENTRY_BYTES = 64 * 1024
 ENTRY_NAME = re.compile(r'^(\d{4})-(\d{2})-(\d{2})$')
 
