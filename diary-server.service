@@ -5,8 +5,8 @@ After=network.target
 [Service]
 User=retro
 ExecStart=/usr/bin/python3 /usr/local/bin/diary_server.py --dir /data/retronas/diary
-# To require a key from the clients:
-# Environment=DIARY_KEY=choose-something
+# A key the clients must send, if /etc/diary-server.env exists (see README)
+EnvironmentFile=-/etc/diary-server.env
 Restart=on-failure
 
 [Install]

@@ -58,6 +58,20 @@ sudo systemctl enable --now diary-server
 The service runs as the user `retro` and keeps the entries in
 `/data/retronas/diary`; edit `diary-server.service` to change either.
 
+To require a key, put it in `/etc/diary-server.env`, readable by root only
+(service files can be read by every user), and restart the service:
+
+```sh
+echo 'DIARY_KEY=choose-something' | sudo tee /etc/diary-server.env > /dev/null
+sudo chmod 600 /etc/diary-server.env
+sudo systemctl restart diary-server
+```
+
+Then enter the key under **Diary Server...** in each Diary app; the web page
+asks for it by itself. Choose a key that's easy to type on all your
+machines: plain lowercase letters and digits travel best between old
+keyboards and character sets.
+
 ## Security
 
 Retro machines can't do HTTPS, so everything, including the key, travels
