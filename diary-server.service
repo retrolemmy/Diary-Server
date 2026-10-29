@@ -1,0 +1,13 @@
+[Unit]
+Description=Diary Server for the retro Diary apps
+After=network.target
+
+[Service]
+User=retro
+ExecStart=/usr/bin/python3 /usr/local/bin/diary_server.py --dir /data/retronas/diary
+# To require a key from the clients:
+# Environment=DIARY_KEY=choose-something
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
