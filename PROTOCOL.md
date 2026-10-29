@@ -61,7 +61,9 @@ character set), ignoring case; newest first, one per line.
 
 ### `GET /`
 
-A short status text, handy for checking the server from a browser.
+A short status text. A browser (a request whose `Accept` header includes
+`text/html`) gets the web page instead: a Diary that runs in the browser
+and uses the requests below. The page needs no key; it asks for one.
 
 ## Keys
 

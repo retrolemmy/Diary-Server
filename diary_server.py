@@ -5,7 +5,8 @@ A tiny HTTP/1.0 server for the Diary apps (classic Mac OS, AmigaOS 3.2,
 Mac OS X, NeXTSTEP, ...).
 Entries are stored as UTF-8 text files named YYYY-MM-DD with LF line ends;
 every client gets and sends them in its own character set and line ends.
-See PROTOCOL.md for the requests. Only the Python standard library is used.
+See PROTOCOL.md for the requests; browsers get a web page with a Diary of
+their own. Only the Python standard library is used.
 
     python3 diary_server.py --dir ~/diary-entries [--port 8642] [--key SECRET]
 """
@@ -175,9 +176,9 @@ class Handler(BaseHTTPRequestHandler):
 
     # ---------- helpers ----------
 
-    def reply(self, status, body=b'', headers=None):
+    def reply(self, status, body=b'', headers=None, content_type='text/plain'):
         self.send_response(status)
-        self.send_header('Content-Type', 'text/plain')
+        self.send_header('Content-Type', content_type)
         self.send_header('Content-Length', str(len(body)))
         self.send_header('Connection', 'close')
         for name, value in (headers or {}).items():
@@ -231,6 +232,12 @@ class Handler(BaseHTTPRequestHandler):
     # ---------- requests ----------
 
     def do_GET(self):
+        # A browser asking for / gets the web page (which holds no entries,
+        # so it needs no key); everyone else gets the status text.
+        if urlsplit(self.path).path == '/' and 'text/html' in self.headers.get('Accept', ''):
+            self.reply(200, WEB_PAGE.encode('utf-8'), {'Cache-Control': 'no-cache'},
+                       'text/html; charset=utf-8')
+            return
         request = self.parse()
         if request is None:
             return
@@ -306,6 +313,425 @@ class Handler(BaseHTTPRequestHandler):
 
     def log_message(self, fmt, *args):
         print('%s - %s' % (self.address_string(), fmt % args), flush=True)
+
+
+# The web page served to browsers at /: a Diary in the browser, using the
+# same requests as the retro clients (in UTF-8).
+WEB_PAGE = r"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diary</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='3' y='2' width='11' height='13' fill='%23fff' stroke='%23000'/%3E%3Crect x='1' y='0.5' width='11' height='13' fill='%23c00' stroke='%23000'/%3E%3Crect x='2' y='1' width='2' height='12' fill='%23600'/%3E%3Crect x='6' y='3' width='5' height='3' fill='%23fff' stroke='%23c90' stroke-width='.6'/%3E%3Crect x='10' y='7' width='3' height='3' fill='%23fc0' stroke='%23000' stroke-width='.6'/%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #e8e6e1; --panel: #fbfaf7; --text: #1d1c1a; --muted: #6f6b64;
+  --line: #c9c5bc; --accent: #b3141b; --accent-text: #fff; --entry: #1d1c1a;
+  --field: #fff; --shadow: 0 1px 2px rgba(0,0,0,.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1b1a19; --panel: #262523; --text: #ecebe8; --muted: #a29e96;
+    --line: #403e3a; --accent: #e0484e; --accent-text: #fff; --entry: #ecebe8;
+    --field: #1f1e1c; --shadow: none;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg); color: var(--text);
+  font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  display: flex; flex-direction: column;
+}
+header {
+  display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+  border-bottom: 1px solid var(--line); background: var(--panel);
+}
+header h1 { font-size: 17px; margin: 0; font-weight: 650; }
+header .where { color: var(--muted); font-size: 13px; margin-left: auto; text-align: right; }
+main {
+  flex: 1; min-height: 0; display: grid; gap: 16px; padding: 16px;
+  grid-template-columns: 260px 1fr;
+}
+.side { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.card {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+.cal { padding: 10px; }
+.cal .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.cal .head strong { font-size: 14px; }
+.cal table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.cal th { font-size: 11px; color: var(--muted); font-weight: 600; padding: 2px 0; }
+.cal td { padding: 1px; text-align: center; }
+.cal td button {
+  width: 100%; aspect-ratio: 1.25; border: 1px solid transparent; border-radius: 5px;
+  background: none; color: var(--text); font: inherit; font-size: 13px; cursor: pointer;
+}
+.cal td button:hover { background: var(--bg); }
+.cal td button.has { font-weight: 750; }
+.cal td button.today { border-color: var(--text); }
+.cal td button.open { background: var(--accent); color: var(--accent-text); }
+.search { display: flex; gap: 6px; }
+.search input { flex: 1; min-width: 0; }
+.list { flex: 1; min-height: 120px; overflow: auto; padding: 4px; }
+.list button {
+  display: block; width: 100%; text-align: left; border: 0; border-radius: 5px;
+  background: none; color: var(--text); font: inherit; font-size: 14px; padding: 5px 8px; cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.list button:hover { background: var(--bg); }
+.list button.open { background: var(--accent); color: var(--accent-text); }
+.list .empty { color: var(--muted); padding: 8px; font-size: 13px; }
+.day { display: flex; flex-direction: column; min-height: 0; padding: 12px; gap: 10px; }
+.day .bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.day h2 { font-size: 17px; margin: 0 0 0 8px; font-weight: 650; }
+textarea {
+  flex: 1; min-height: 240px; width: 100%; resize: none; padding: 12px;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--field); color: var(--entry);
+  font: 16px/1.55 Georgia, "Times New Roman", serif;
+}
+textarea:focus, input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.foot { display: flex; align-items: center; gap: 8px; }
+.status { color: var(--muted); font-size: 13px; margin-right: auto; }
+.status.error { color: var(--accent); }
+input {
+  font: inherit; font-size: 14px; padding: 5px 8px; border: 1px solid var(--line);
+  border-radius: 5px; background: var(--field); color: var(--text);
+}
+.btn {
+  font: inherit; font-size: 14px; padding: 5px 12px; border: 1px solid var(--line); border-radius: 5px;
+  background: var(--panel); color: var(--text); cursor: pointer;
+}
+.btn:hover { background: var(--bg); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.btn:disabled { opacity: .5; cursor: default; }
+.icon { padding: 5px 9px; }
+.keybox { padding: 16px; max-width: 420px; margin: 40px auto; display: none; }
+.keybox p { margin: 0 0 10px; }
+.keybox form { display: flex; gap: 6px; }
+.keybox input { flex: 1; }
+@media (max-width: 720px) {
+  html, body { height: auto; }
+  main { flex: none; grid-template-columns: 1fr; padding: 12px 16px; }
+  .side { min-height: auto; }
+  .list { flex: none; max-height: 200px; }
+  textarea { flex: none; min-height: 50vh; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Diary</h1>
+  <span class="where" id="where"></span>
+</header>
+
+<div class="card keybox" id="keybox">
+  <p><strong>This Diary Server needs a key.</strong></p>
+  <p id="keymsg">Enter the key it was started with; this browser remembers it.</p>
+  <form id="keyform"><input id="key" type="password" autocomplete="current-password" aria-label="Key">
+    <button class="btn primary">Open</button></form>
+</div>
+
+<main id="app" hidden>
+  <div class="side">
+    <div class="card cal">
+      <div class="head">
+        <button class="btn icon" id="prevMonth" aria-label="Previous month">‹</button>
+        <strong id="month"></strong>
+        <button class="btn icon" id="nextMonth" aria-label="Next month">›</button>
+      </div>
+      <table><thead><tr><th>S</th><th>M</th><th>T</th><th>W</th><th>T</th><th>F</th><th>S</th></tr></thead>
+        <tbody id="days"></tbody></table>
+    </div>
+    <form class="search" id="searchform">
+      <input id="search" type="search" placeholder="Find in all entries" aria-label="Find">
+      <button class="btn">Find</button>
+    </form>
+    <div class="card list" id="list"></div>
+  </div>
+
+  <div class="card day">
+    <div class="bar">
+      <button class="btn icon" id="prevDay" aria-label="Previous day">‹</button>
+      <button class="btn" id="today">Today</button>
+      <button class="btn icon" id="nextDay" aria-label="Next day">›</button>
+      <h2 id="date"></h2>
+    </div>
+    <textarea id="text" spellcheck="true" aria-label="Entry"></textarea>
+    <div class="foot">
+      <span class="status" id="status"></span>
+      <button class="btn primary" id="save">Save</button>
+    </div>
+  </div>
+</main>
+
+<script>
+"use strict";
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July",
+                "August", "September", "October", "November", "December"];
+const $ = id => document.getElementById(id);
+
+let key = "";
+try { key = localStorage.getItem("diaryKey") || ""; } catch (e) {}
+let allDays = [];          // "YYYY-MM-DD", newest first
+let shownDays = [];        // the same, or a search's matches
+let search = "";
+let day = "";              // the open day
+let version = "none";      // the server's version of the open entry
+let loadedText = "";
+let calYear = 0, calMonth = 0;
+
+// ---------- Dates (as YYYY-MM-DD strings, computed in UTC) ----------
+const pad = n => String(n).padStart(2, "0");
+const toName = d => `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+const fromName = s => new Date(Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10)));
+function todayName() {
+  const now = new Date();
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+function addDays(name, n) {
+  const d = fromName(name);
+  d.setUTCDate(d.getUTCDate() + n);
+  return toName(d);
+}
+function longDate(name) {
+  const d = fromName(name);
+  return `${WEEKDAYS[d.getUTCDay()]}, ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+function shortDate(name) {
+  const d = fromName(name);
+  return `${WEEKDAYS[d.getUTCDay()].slice(0, 3)} ${pad(d.getUTCDate())} ${MONTHS[d.getUTCMonth()].slice(0, 3)} ${d.getUTCFullYear()}`;
+}
+
+// ---------- Server ----------
+class KeyError extends Error {}
+
+async function request(method, path, body, base) {
+  const headers = {};
+  if (key) headers["X-Diary-Key"] = key;
+  if (base !== undefined) headers["X-Diary-Base"] = base;
+  if (body !== undefined) headers["Content-Type"] = "text/plain; charset=utf-8";
+  const response = await fetch(path + (path.includes("?") ? "&" : "?") + "charset=utf-8",
+                               { method, headers, body, cache: "no-store" });
+  if (response.status === 403) throw new KeyError();
+  return { status: response.status, text: await response.text(),
+           version: response.headers.get("X-Diary-Version") || "none" };
+}
+
+const daysIn = text => text.split("\n").map(l => l.slice(0, 10)).filter(s => /^\d{4}-\d\d-\d\d$/.test(s));
+
+function setStatus(message, isError) {
+  $("status").textContent = message;
+  $("status").classList.toggle("error", !!isError);
+}
+
+const dirty = () => $("text").value.replace(/\n+$/, "") !== loadedText;
+
+function showKeyBox(message) {
+  $("app").hidden = true;
+  $("keybox").style.display = "block";
+  if (message) $("keymsg").textContent = message;
+  $("key").focus();
+}
+
+// Runs a server action; on a wrong key, asks for it instead.
+async function guarded(action) {
+  try {
+    return await action();
+  } catch (e) {
+    if (e instanceof KeyError) showKeyBox(key ? "That key isn't right. Try again:" : null);
+    else setStatus("The Diary Server can't be reached: " + e.message, true);
+    return undefined;
+  }
+}
+
+// ---------- Entries ----------
+async function loadList() {
+  const r = await request("GET", "/entries");
+  allDays = daysIn(r.text);
+  if (!search) shownDays = allDays.slice();
+}
+
+async function loadEntry() {
+  const r = await request("GET", "/entries/" + day);
+  loadedText = r.status === 200 ? r.text : "";
+  version = r.status === 200 ? r.version : "none";
+  $("text").value = loadedText;
+  $("date").textContent = longDate(day);
+  document.title = "Diary – " + shortDate(day);
+  setStatus(r.status === 200 || r.status === 404 ? "" : "The server refused the entry: " + r.text.trim(), r.status !== 200 && r.status !== 404);
+}
+
+// Saves the open entry if it changed; an empty entry is deleted.
+async function save() {
+  if (!dirty()) return true;
+  const text = $("text").value.replace(/\n+$/, "");
+  let base = version;
+  for (;;) {
+    setStatus("Saving…");
+    const r = text ? await request("PUT", "/entries/" + day, text, base)
+                   : await request("DELETE", "/entries/" + day, undefined, base);
+    if (r.status === 200) {
+      version = r.version;
+      loadedText = text;
+      const known = allDays.includes(day);
+      if (!text) {
+        allDays = allDays.filter(d => d !== day);
+        shownDays = shownDays.filter(d => d !== day);
+      } else if (!known) {
+        allDays = [...allDays, day].sort().reverse();
+        if (!search) shownDays = allDays.slice();
+      }
+      setStatus("Saved");
+      render();
+      return true;
+    }
+    if (r.status !== 409) {
+      setStatus("The Diary Server refused to save the entry: " + r.text.trim(), true);
+      return false;
+    }
+    if (!confirm("This entry was changed on another computer since you opened it.\n\nSave your version over it?")) {
+      setStatus("Not saved: the entry was changed elsewhere.", true);
+      return false;
+    }
+    base = undefined;      // replace it unconditionally
+  }
+}
+
+async function openDay(name, select) {
+  if (name !== day) {
+    if (!(await save())) return;
+    day = name;
+    const d = fromName(day);
+    calYear = d.getUTCFullYear();
+    calMonth = d.getUTCMonth();
+    await loadEntry();
+  }
+  render();
+  if (select) selectMatch(0);
+}
+
+// ---------- Search ----------
+function selectMatch(from) {
+  if (!search) return false;
+  const area = $("text");
+  const at = area.value.toLowerCase().indexOf(search.toLowerCase(), from);
+  if (at < 0) return false;
+  area.focus();
+  area.setSelectionRange(at, at + search.length);
+  return true;
+}
+
+async function find(words) {
+  words = words.trim();
+  if (!words) {
+    search = "";
+    shownDays = allDays.slice();
+    render();
+    return;
+  }
+  if (!(await save())) return;
+  const r = await request("GET", "/search?q=" + encodeURIComponent(words));
+  const matches = daysIn(r.text);
+  if (!matches.length) {
+    setStatus("No entries contain that text.");
+    return;
+  }
+  search = words;
+  shownDays = matches;
+  if (!shownDays.includes(day)) await openDay(shownDays[0], true);
+  else { render(); selectMatch(0); }
+}
+
+// ---------- Drawing ----------
+function render() {
+  const shown = new Set(shownDays);
+  $("month").textContent = `${MONTHS[calMonth]} ${calYear}`;
+  const first = new Date(Date.UTC(calYear, calMonth, 1));
+  const length = new Date(Date.UTC(calYear, calMonth + 1, 0)).getUTCDate();
+  const today = todayName();
+  const body = $("days");
+  body.textContent = "";
+  let row = body.insertRow();
+  for (let i = 0; i < first.getUTCDay(); i++) row.insertCell();
+  for (let n = 1; n <= length; n++) {
+    if (row.cells.length === 7) row = body.insertRow();
+    const name = `${calYear}-${pad(calMonth + 1)}-${pad(n)}`;
+    const button = document.createElement("button");
+    button.textContent = n;
+    button.className = (shown.has(name) ? "has " : "") + (name === today ? "today " : "") + (name === day ? "open" : "");
+    button.setAttribute("aria-label", longDate(name) + (shown.has(name) ? ", has an entry" : ""));
+    button.onclick = () => guarded(() => openDay(name, true));
+    row.insertCell().appendChild(button);
+  }
+
+  const list = $("list");
+  list.textContent = "";
+  if (search) {
+    const all = document.createElement("button");
+    all.textContent = `Show all entries (finding “${search}”)`;
+    all.style.color = "var(--muted)";
+    all.onclick = () => { $("search").value = ""; find(""); };
+    list.appendChild(all);
+  }
+  for (const name of shownDays) {
+    const button = document.createElement("button");
+    button.textContent = shortDate(name);
+    if (name === day) button.className = "open";
+    button.onclick = () => guarded(() => openDay(name, true));
+    list.appendChild(button);
+  }
+  if (!shownDays.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "No entries yet.";
+    list.appendChild(empty);
+  }
+  const open = list.querySelector(".open");
+  if (open) open.scrollIntoView({ block: "nearest" });
+}
+
+// ---------- Start ----------
+async function start() {
+  $("keybox").style.display = "none";
+  $("app").hidden = false;
+  $("where").textContent = "Diary Server at " + location.host;
+  await loadList();
+  const name = day || todayName();
+  day = "";
+  await openDay(name, false);
+  $("text").focus();
+}
+
+$("keyform").onsubmit = e => {
+  e.preventDefault();
+  key = $("key").value;
+  try { localStorage.setItem("diaryKey", key); } catch (err) {}
+  guarded(start);
+};
+$("prevMonth").onclick = () => { if (--calMonth < 0) { calMonth = 11; calYear--; } render(); };
+$("nextMonth").onclick = () => { if (++calMonth > 11) { calMonth = 0; calYear++; } render(); };
+$("prevDay").onclick = () => guarded(() => openDay(addDays(day, -1), false));
+$("nextDay").onclick = () => guarded(() => openDay(addDays(day, 1), false));
+$("today").onclick = () => guarded(() => openDay(todayName(), false));
+$("save").onclick = () => guarded(save);
+$("searchform").onsubmit = e => { e.preventDefault(); guarded(() => find($("search").value)); };
+$("text").oninput = () => setStatus(dirty() ? "Not saved yet" : "");
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+    e.preventDefault();
+    guarded(save);
+  }
+});
+window.addEventListener("beforeunload", e => { if (dirty()) { e.preventDefault(); e.returnValue = ""; } });
+guarded(start);
+</script>
+</body>
+</html>
+"""
 
 
 def import_entries(store, source):

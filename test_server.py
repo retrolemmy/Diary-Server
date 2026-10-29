@@ -83,6 +83,15 @@ class Basics(ServerTest):
         _, _, amiga = self.request('GET', '/entries/2026-10-25?charset=latin1')
         self.assertEqual(amiga, b'Gr\xfc\xdfe von Windows\n"Quotes" - ok EUR')
 
+    def test_web_page_for_browsers_only(self):
+        status, headers, body = self.request('GET', '/', headers={'Accept': 'text/html,*/*'})
+        self.assertEqual(status, 200)
+        self.assertTrue(headers['Content-Type'].startswith('text/html'))
+        self.assertIn(b'<title>Diary</title>', body)
+        status, headers, body = self.request('GET', '/')
+        self.assertEqual(headers['Content-Type'], 'text/plain')
+        self.assertTrue(body.startswith(b'Diary Server'))
+
     def test_list_newest_first_with_versions(self):
         for day in ('2026-10-01', '2026-10-28', '2025-12-31'):
             self.request('PUT', '/entries/' + day, b'x')
@@ -135,6 +144,12 @@ class Basics(ServerTest):
 
 class WithKey(ServerTest):
     key = 'secret'
+
+    def test_web_page_needs_no_key(self):
+        # The page holds no entries; it asks for the key itself.
+        status, _, body = self.request('GET', '/', headers={'Accept': 'text/html'})
+        self.assertEqual(status, 200)
+        self.assertIn(b'needs a key', body)
 
     def test_key_required(self):
         self.assertEqual(self.request('GET', '/entries')[0], 403)

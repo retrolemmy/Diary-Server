@@ -15,6 +15,18 @@ Mac OS X, Windows-1252 for Windows, and NeXTSTEP's own character set. Search run
 server, so it's quick even on a 68000. Saving an entry that was changed on
 another machine in the meantime is refused instead of overwriting it.
 
+## In a browser
+
+Any modern browser, on a computer, tablet or phone in your network, gets a
+Diary of its own at the server's address, e.g. `http://192.168.1.10:8642/`:
+a month calendar with the days that have an entry in bold, the list of
+entries, search, and the open day to read and write. It saves when you
+switch days, with the Save button or with Ctrl+S (⌘S), and like the retro
+clients it asks before saving over an entry that was changed elsewhere in
+the meantime. If the server has a key, the page asks for it once and the
+browser remembers it. The page is built into `diary_server.py`; it needs no
+internet connection.
+
 ## Running
 
 ```sh
