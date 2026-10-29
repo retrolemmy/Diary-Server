@@ -2,15 +2,16 @@
 
 Keeps the entries of all your [Diary](https://github.com/retrolemmy/Diary)
 apps in one place: the classic Mac OS,
-[AmigaOS 3.2](https://github.com/retrolemmy/Diary-Amiga) and
-[Mac OS X 10.4/10.5](https://github.com/retrolemmy/Diary-MacOSX) versions,
+[AmigaOS 3.2](https://github.com/retrolemmy/Diary-Amiga),
+[Mac OS X 10.4/10.5](https://github.com/retrolemmy/Diary-MacOSX) and
+[Windows 98](https://github.com/retrolemmy/Diary-Win98) versions,
 and any retro system that gets one later.
 
 It's a single Python file with no dependencies beyond the standard library.
 It speaks plain HTTP/1.0 (see [PROTOCOL.md](PROTOCOL.md)), stores entries as
 UTF-8 text files, and gives every machine its entries in its own character
 set: MacRoman for the classic Mac, ISO Latin-1 for the Amiga, UTF-8 for
-Mac OS X, and NeXTSTEP's own character set. Search runs on the
+Mac OS X, Windows-1252 for Windows, and NeXTSTEP's own character set. Search runs on the
 server, so it's quick even on a 68000. Saving an entry that was changed on
 another machine in the meantime is refused instead of overwriting it.
 
