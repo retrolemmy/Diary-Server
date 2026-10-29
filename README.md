@@ -1,7 +1,8 @@
 # Diary Server
 
 Keeps the entries of all your [Diary](https://github.com/retrolemmy/Diary)
-apps in one place: the classic Mac OS,
+apps in one place: the classic Mac OS (68k Macs, and PowerPC Macs up to a
+G4 with Mac OS 9.2.2),
 [AmigaOS 3.2](https://github.com/retrolemmy/Diary-Amiga),
 [Mac OS X 10.4/10.5](https://github.com/retrolemmy/Diary-MacOSX) and
 [Windows 98](https://github.com/retrolemmy/Diary-Win98) versions,
