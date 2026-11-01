@@ -101,6 +101,8 @@ also gives modern browsers a Diary web page:
   PowerPC and Intel Macs (tested on Leopard)
 - [Windows 98](https://github.com/retrolemmy/Diary-Win98) (tested on Windows 98
   and Windows 11)
+- Modern browsers on computers, tablets and phones: the Diary Server's web page
+  (tested in Chrome and Firefox)
 - [Diary Server](https://github.com/retrolemmy/Diary-Server) (tested on a
   RetroNAS)
 
