@@ -8,7 +8,8 @@ G4 with Mac OS 9.2.2),
 a Mac mini G4 and the A4000),
 [Mac OS X 10.4/10.5](https://github.com/retrolemmy/Diary-MacOSX),
 [Windows 98](https://github.com/retrolemmy/Diary-Win98) and
-[Linux with GTK 3](https://github.com/retrolemmy/Diary-Linux) versions,
+[Linux with GTK 3](https://github.com/retrolemmy/Diary-Linux) (tested on a
+Power Mac G5) versions,
 and any retro system that gets one later.
 
 It's a single Python file with no dependencies beyond the standard library.
