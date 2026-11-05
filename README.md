@@ -6,15 +6,16 @@ G4 with Mac OS 9.2.2),
 [AmigaOS 3.2](https://github.com/retrolemmy/Diary-Amiga) (tested on an A4000),
 [MorphOS and AmigaOS with MUI](https://github.com/retrolemmy/Diary-Amiga-MUI) (tested on
 a Mac mini G4 and the A4000),
-[Mac OS X 10.4/10.5](https://github.com/retrolemmy/Diary-MacOSX) and
-[Windows 98](https://github.com/retrolemmy/Diary-Win98) versions,
+[Mac OS X 10.4/10.5](https://github.com/retrolemmy/Diary-MacOSX),
+[Windows 98](https://github.com/retrolemmy/Diary-Win98) and
+[Linux with GTK 3](https://github.com/retrolemmy/Diary-Linux) versions,
 and any retro system that gets one later.
 
 It's a single Python file with no dependencies beyond the standard library.
 It speaks plain HTTP/1.0 (see [PROTOCOL.md](PROTOCOL.md)), stores entries as
 UTF-8 text files, and gives every machine its entries in its own character
 set: MacRoman for the classic Mac, ISO Latin-1 for the Amiga, UTF-8 for
-Mac OS X, Windows-1252 for Windows, and NeXTSTEP's own character set. Search runs on the
+Mac OS X and Linux, Windows-1252 for Windows, and NeXTSTEP's own character set. Search runs on the
 server, so it's quick even on a 68000. Saving an entry that was changed on
 another machine in the meantime is refused instead of overwriting it.
 
@@ -101,6 +102,8 @@ also gives modern browsers a Diary web page:
   PowerPC and Intel Macs (tested on Leopard)
 - [Windows 98](https://github.com/retrolemmy/Diary-Win98) (tested on Windows 98
   and Windows 11)
+- [Linux with GTK 3](https://github.com/retrolemmy/Diary-Linux) (tested on a
+  Power Mac G5 with Gentoo Linux)
 - Modern browsers on computers, tablets and phones: the Diary Server's web page
   (tested in Chrome and Firefox)
 - [Diary Server](https://github.com/retrolemmy/Diary-Server) (tested on a
